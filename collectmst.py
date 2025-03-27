@@ -18,16 +18,16 @@ from tkinter import filedialog, messagebox
 import concurrent.futures
 from threading import Event, Thread, Lock
 
-# --- Cấu hình logging & biến toàn cục ---
+#Cấu hình logging & biến toàn cục
 data = None  # Biến toàn cục để lưu DataFrame
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 pause_event = Event()
-pause_event.set()  # Cho phép chạy ban đầu
-processed_count = 0    # Số dòng đã xử lý
-total_count = 0        # Tổng số dòng cần xử lý
-progress_lock = Lock() # Khóa cập nhật tiến trình
-CHROMEDRIVER_PATH = r"C:\Users\Khanh\Downloads\chromedriver-win64\chromedriver-win64\chromedriver.exe"
-EXTENSION_PATH = r"C:\Users\Khanh\OneDrive\Desktop\machinelearning"
+pause_event.set()
+processed_count = 0
+total_count = 0 
+progress_lock = Lock() 
+CHROMEDRIVER_PATH = ""
+EXTENSION_PATH = ""
 
 # --- Danh sách từ viết tắt (định nghĩa toàn cục) ---
 abbreviation_map = {
@@ -54,7 +54,7 @@ abbreviation_map = {
 }
 abbreviation_map = {re.compile(k): v for k, v in abbreviation_map.items()}
 
-# --- Thiết lập ChromeDriver ---
+#Thiết lập ChromeDriver
 def setup_driver():
     chrome_options = Options()
     chrome_options.add_argument('--disable-gpu')
@@ -64,7 +64,7 @@ def setup_driver():
     service = Service(CHROMEDRIVER_PATH)
     return webdriver.Chrome(service=service, options=chrome_options)
 
-# --- Hàm trích xuất MST từ văn bản ---
+#Hàm trích xuất MST từ văn bản
 def extract_tax_id(text, tax_prefix):
     if tax_prefix:
         num_digits = 10 - len(tax_prefix)
@@ -74,7 +74,7 @@ def extract_tax_id(text, tax_prefix):
     matches = re.findall(pattern, text)
     return matches  # Trả về tất cả MST tìm thấy
 
-# --- Hàm tìm kiếm tất cả candidate MST từ kết quả Bing ---
+#Hàm tìm kiếm tất cả candidate MST từ kết quả Bing
 def search_tax_info(driver, search_query, tax_prefix, search_engine="Bing"):
     candidate_tax_ids = []
     try:
@@ -96,7 +96,7 @@ def search_tax_info(driver, search_query, tax_prefix, search_engine="Bing"):
         logging.error(f"Lỗi khi tìm kiếm trên Bing: {e}")
     return candidate_tax_ids
 
-# --- API tra cứu thông tin công ty từ MST ---
+#API tra cứu thông tin công ty từ MST
 API_URL_TEMPLATE = "https://api.vietqr.io/v2/business/{taxCode}"
 def api_lookup(tax_id):
     url = API_URL_TEMPLATE.replace("{taxCode}", tax_id)
@@ -116,7 +116,7 @@ def api_lookup(tax_id):
         time.sleep(1)
     return "Error: Retry exhausted", "Error"
 
-# --- Hàm normalize_text và check_similarity ---
+#Hàm normalize_text và check_similarity
 def normalize_text(text):
     if text is None:
         return ""
@@ -132,7 +132,7 @@ def check_similarity(text1, text2):
     normalized2 = normalize_text(text2)
     return SequenceMatcher(None, normalized1, normalized2).ratio()
 
-# --- Hàm xác thực candidate MST qua API ---
+#Hàm xác thực candidate MST qua API
 def validate_tax_candidates(candidate_tax_ids, expected_company, province):
     normalized_province = normalize_text(province)
     for tax_id in candidate_tax_ids:
@@ -144,7 +144,7 @@ def validate_tax_candidates(candidate_tax_ids, expected_company, province):
                 return tax_id, "Cùng tỉnh"
     return None, None
 
-# --- Xử lý dữ liệu từng chunk (song song) ---
+#Xử lý dữ liệu từng chunk
 def process_chunk(chunk_data, keyword, tax_prefix, search_engine, province):
     global processed_count, data
     driver = setup_driver()
@@ -173,7 +173,7 @@ def process_chunk(chunk_data, keyword, tax_prefix, search_engine, province):
             processed_count += 1
     driver.quit()
 
-# --- Xử lý dữ liệu đồng thời và cập nhật file Excel ---
+#Xử lý dữ liệu đồng thời và cập nhật file Excel
 def process_data_concurrent(input_file, keyword, tax_prefix, num_threads, search_engine, province):
     global data, total_count, processed_count
     processed_count = 0
@@ -208,13 +208,13 @@ def process_data_concurrent(input_file, keyword, tax_prefix, num_threads, search
         logging.error(f"Lỗi khi ghi file Excel: {e}")
         messagebox.showerror("Lỗi", "Không thể ghi file Excel!")
 
-# --- Cập nhật tiến trình trên giao diện ---
+
 def update_gui_progress():
     progress_label.configure(text=f"Đã xử lý: {processed_count}/{total_count}")
     progress_bar.set(processed_count / total_count if total_count else 0)
     root.after(500, update_gui_progress)
 
-# --- Hàm chọn file ---
+
 def select_file(save=False):
     if save:
         file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
@@ -224,7 +224,7 @@ def select_file(save=False):
         input_file_entry.delete(0, ctk.END)
         input_file_entry.insert(0, file_path)
 
-# --- Các hàm xử lý nút bấm ---
+
 def start_processing():
     input_file = input_file_entry.get()
     keyword = keyword_entry.get()
@@ -265,20 +265,20 @@ def save_current_file():
             logging.error(f"Lỗi khi lưu file: {e}")
             messagebox.showerror("Lỗi", "Không thể lưu file!")
 
-# --- Cấu hình CustomTkinter ---
+
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
 
-# --- Tạo cửa sổ chính ---
+
 root = ctk.CTk()
 root.title("Ứng dụng tìm mã số thuế và xác thực tên công ty")
 root.geometry("800x600")
 
-# --- Tạo Frame để bố trí các widget ---
+
 input_frame = ctk.CTkFrame(master=root)
 input_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
-# Row 0: Chọn file Excel
+
 input_file_label = ctk.CTkLabel(master=input_frame, text="Chọn file Excel đầu vào:")
 input_file_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
 input_file_entry = ctk.CTkEntry(master=input_frame, width=400)
@@ -286,32 +286,31 @@ input_file_entry.grid(row=0, column=1, padx=10, pady=10)
 input_file_button = ctk.CTkButton(master=input_frame, text="Chọn file", command=lambda: select_file(False))
 input_file_button.grid(row=0, column=2, padx=10, pady=10)
 
-# Row 1: Nhập từ khóa
+
 keyword_label = ctk.CTkLabel(master=input_frame, text="Nhập từ khóa tìm kiếm:")
 keyword_label.grid(row=1, column=0, padx=10, pady=10, sticky="w")
 keyword_entry = ctk.CTkEntry(master=input_frame, width=400)
 keyword_entry.grid(row=1, column=1, padx=10, pady=10, columnspan=2)
 
-# Row 2: Nhập đầu số MST
+
 tax_prefix_label = ctk.CTkLabel(master=input_frame, text="Nhập đầu số mã số thuế:")
 tax_prefix_label.grid(row=2, column=0, padx=10, pady=10, sticky="w")
 tax_prefix_entry = ctk.CTkEntry(master=input_frame, width=400)
 tax_prefix_entry.grid(row=2, column=1, padx=10, pady=10, columnspan=2)
 
-# Row 3: Nhập Tỉnh/TP cần kiểm tra
 province_label = ctk.CTkLabel(master=input_frame, text="Tỉnh/TP cần kiểm tra:")
 province_label.grid(row=3, column=0, padx=10, pady=10, sticky="w")
 province_entry = ctk.CTkEntry(master=input_frame, width=400)
 province_entry.grid(row=3, column=1, padx=10, pady=10, columnspan=2)
 
-# Row 4: Số luồng xử lý
+
 num_threads_label = ctk.CTkLabel(master=input_frame, text="Số luồng xử lý:")
 num_threads_label.grid(row=4, column=0, padx=10, pady=10, sticky="w")
 num_threads_entry = ctk.CTkEntry(master=input_frame, width=400)
 num_threads_entry.grid(row=4, column=1, padx=10, pady=10, columnspan=2)
 num_threads_entry.insert(0, "1")
 
-# Row 5: Các nút điều khiển
+
 start_button = ctk.CTkButton(master=input_frame, text="Bắt đầu", command=start_processing)
 start_button.grid(row=5, column=0, padx=10, pady=10)
 pause_button = ctk.CTkButton(master=input_frame, text="Tạm dừng", command=pause_processing)
@@ -321,7 +320,7 @@ continue_button.grid(row=5, column=2, padx=10, pady=10)
 save_button = ctk.CTkButton(master=input_frame, text="Lưu file hiện tại", command=save_current_file)
 save_button.grid(row=5, column=3, padx=10, pady=10)
 
-# Row 6: Hiển thị tiến trình
+
 progress_label = ctk.CTkLabel(master=input_frame, text="Chưa bắt đầu")
 progress_label.grid(row=6, column=0, padx=10, pady=10, sticky="w")
 progress_bar = ctk.CTkProgressBar(master=input_frame, width=400)
